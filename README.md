@@ -18,7 +18,7 @@ for rpi3 (untested),if qt-default is not found use the rpi4 code above
 sudo apt-get install qt5-default
 ```
 
--Clone the repository on RPI4 which will create a DarianB_Vitamin folder and put all of the GIT files in it
+-Clone the repository on RPI4 which will create a TutorDB_v2 folder and put all of the GIT files in it
 ```
 git clone https://github.com/mattymactutor/TutorDB_v2
 ```
