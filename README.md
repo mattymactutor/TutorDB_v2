@@ -24,7 +24,7 @@ git clone https://github.com/mattymactutor/TutorDB_v2
 ```
 
 -use qmake to generate the makefile. 
-In this case, the .pro file should be called DarianB_Vitamin.pro but replace that with the name of your .pro file.
+In this case, the .pro file should be called TutorDB_v2.pro but replace that with the name of your .pro file.
 ```
 qmake -o Makefile TutorDB_v2.pro
 ```
