@@ -671,7 +671,7 @@ void MainWindow::on_actionMakeInvoice_triggered()
     qDebug() << "create invoice for " << selectedClient->getName();
     QModelIndexList selection = ui->tblLogs->selectionModel()->selectedIndexes();
 
-    vector<Entry*> invoiceEntries;
+    vector<Entry> invoiceEntries;
 
     // Multiple rows can be selected, but you have to delete them in reverse order
     //say you have
@@ -682,12 +682,15 @@ void MainWindow::on_actionMakeInvoice_triggered()
     {
         QModelIndex index = selection.at(i);
         qDebug() << index.row();
-        invoiceEntries.push_back(selectedClient->getLog(index.row()));
+        invoiceEntries.push_back(*selectedClient->getLog(index.row()));
     }
+    //The entries will be loaded in the order that they were selected by the mouse, pretty cool actually
+    //so we need to resort them by date
+    sort(invoiceEntries.begin(),invoiceEntries.end(),Entry::sortByDate_asc);
 
     //send the current client and the selected logs to the invoice dialog
     invoiceDlg = new InvoiceDlg();
-    connect(this, SIGNAL(sendToInvoiceDlg(Client*,vector<Entry*>)), invoiceDlg, SLOT(receiveData(Client*,vector<Entry*>)));
+    connect(this, SIGNAL(sendToInvoiceDlg(Client*,vector<Entry>)), invoiceDlg, SLOT(receiveData(Client*,vector<Entry>)));
     invoiceDlg->show();
     emit sendToInvoiceDlg(selectedClient,invoiceEntries);
 
@@ -700,6 +703,7 @@ void MainWindow::on_actionSendToPhone_triggered()
     QModelIndexList selection = ui->tblLogs->selectionModel()->selectedIndexes();
     QString output = "";
 
+    double total = 0;
     // Multiple rows can be selected, but you have to delete them in reverse order
     //say you have
     //entry1
@@ -709,6 +713,7 @@ void MainWindow::on_actionSendToPhone_triggered()
     {
         QModelIndex index = selection.at(i);
         Entry * e = selectedClient->getLog(index.row());
+        total += e->getAmount();
         output += QString::number(e->getLength()) + "hrs " + e->getDate().split(" ")[0] + " | ";
     }
 
@@ -720,6 +725,12 @@ void MainWindow::on_actionSendToPhone_triggered()
     QClipboard * clipboard = QApplication::clipboard();
     clipboard->setText(output);
     qDebug() << "copied to clipboard";
+
+    QMessageBox msgBox;
+    msgBox.setText("The total for these lessons is: $" + QString::number(total));
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+    int ret = msgBox.exec();
 }
 
 void markAs(QString s){

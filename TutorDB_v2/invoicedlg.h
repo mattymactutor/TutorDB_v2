@@ -18,7 +18,7 @@ public:
     ~InvoiceDlg();
 
 private slots:
-    void receiveData(Client *, vector<Entry *>);
+    void receiveData(Client *, vector<Entry>);
 
 private:
     Ui::InvoiceDlg *ui;

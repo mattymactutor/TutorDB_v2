@@ -24,7 +24,7 @@ public:
 
 
 signals:
-    void sendToInvoiceDlg(Client *, vector<Entry *>);
+    void sendToInvoiceDlg(Client *, vector<Entry>);
 
 private slots:
     void on_lstClients_itemClicked(QListWidgetItem *item);
