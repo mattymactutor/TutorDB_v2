@@ -733,19 +733,21 @@ void MainWindow::on_actionSendToPhone_triggered()
     int ret = msgBox.exec();
 }
 
-void markAs(QString s){
+void markAs(QString s, FirebaseHandler * db){
     QModelIndexList selection = ui2->tblLogs->selectionModel()->selectedIndexes();
     for(int i = 0; i < selection.count(); i++)
     {
         QModelIndex index = selection.at(i);
         Entry * e = selectedClient->getLog(index.row());
         e->setStatus(s);
+        db->updateEntry(e);
+
     }
 }
 
 void MainWindow::on_actionMarkAsSent_triggered()
 {
-    markAs("SENT");
+    markAs("SENT", db);
     showLogs();
 }
 
@@ -754,7 +756,15 @@ void MainWindow::on_actionMarkAsSent_triggered()
 
 void MainWindow::on_actionMarkAsPaid_triggered()
 {
-    markAs("PAID");
+    markAs("PAID", db);
     showLogs();
+}
+
+
+void MainWindow::on_edtLength_textChanged()
+{
+    double length = ui->edtLength->toPlainText().toDouble();
+    double rate = ui->edtRate->toPlainText().toDouble();
+    ui->edtAmount->setPlainText( QString::number( ceil(length * rate) ) );
 }
 

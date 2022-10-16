@@ -48,6 +48,8 @@ private slots:
 
     void on_actionMarkAsPaid_triggered();
 
+    void on_edtLength_textChanged();
+
 private:
     Ui::MainWindow *ui;
     FirebaseHandler * db;
