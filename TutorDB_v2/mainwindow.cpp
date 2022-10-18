@@ -245,6 +245,10 @@ MainWindow::MainWindow(QWidget *parent)
     });
 }
 
+int roundUp(float in){
+    return (int)(in + 0.5);
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -330,7 +334,7 @@ void MainWindow::on_tblLogs_cellChanged(int row, int column)
                 //also need to update the amount
                 l = cell->text().toDouble(); //get length from table
                 logToChange->setLength(l); //set it in local db
-                amt = ceil(l * dbClients[idxSelClient].getRate()); //calc new amt
+                amt = roundUp(l * dbClients[idxSelClient].getRate()); //calc new amt
                 logToChange->setAmount(amt); //set new amt
                 changeCell = ui->tblLogs->item(row,COL_AMT); //grab the amt cell
                 changeCell->setText(QString::number(amt)); //set amt cell text
@@ -545,7 +549,7 @@ void MainWindow::wheelEvent(QWheelEvent * event){
 
         ui->edtLength->setPlainText(QString::number(length) );
         double rate = ui->edtRate->toPlainText().toDouble();
-        ui->edtAmount->setPlainText( QString::number( ceil(length * rate) ) );
+        ui->edtAmount->setPlainText( QString::number( roundUp(length * rate) ) );
     } else if (isEventInside(ui->edtDate, event)){
 
         QString time = ui->edtDate->toPlainText();
@@ -765,6 +769,6 @@ void MainWindow::on_edtLength_textChanged()
 {
     double length = ui->edtLength->toPlainText().toDouble();
     double rate = ui->edtRate->toPlainText().toDouble();
-    ui->edtAmount->setPlainText( QString::number( ceil(length * rate) ) );
+    ui->edtAmount->setPlainText( QString::number( roundUp(length * rate) ) );
 }
 
