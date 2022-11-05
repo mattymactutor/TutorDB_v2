@@ -89,10 +89,11 @@ public:
         return d1 < d2;
     }
     static bool sortByDate_dec(const Entry lhs, const Entry rhs){
-        //convert to dates
-       // QDateTime d1 = QDateTime::fromString(lhs.getDate() + " " + lhs.getTime(), "MM-dd-yyyy hh:mma");
-       // QDateTime d2 = QDateTime::fromString(rhs.getDate() + " " + rhs.getTime(), "MM-dd-yyyy hh:mma");
-        return !sortByDate_asc(lhs,rhs);
+        QString date = lhs.getDate();
+        QString time = lhs.getTime();
+        QDateTime d1 = QDateTime::fromString(date + " " + time, "MM-dd-yyyy hh:mma");
+        QDateTime d2 = QDateTime::fromString(rhs.getDate() + " " + rhs.getTime(), "MM-dd-yyyy hh:mma");
+        return d1 > d2;
     }
 };
 

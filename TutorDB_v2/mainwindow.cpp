@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QClipboard>
 #include <QTextEdit>
+#include <QInputDialog>
 #include <QWheelEvent>
 #include <vector>
 #include "Entry.h"
@@ -11,8 +12,7 @@
 
 /*
  TODO
- The total amt owed did not update as new lessons came in
- Need a way to mark all the highlighted rows as sent and maybe just auto do it from the create invoice screen, make sent button
+
  */
 
 /*
@@ -71,7 +71,7 @@ vector<Client*> displayClients;
 Client * selectedClient = nullptr;
 int idxSelClient = -1;
 Ui::MainWindow * ui2;
-bool sortLogsAsc = true;
+bool sortLogsAsc = false;
 double totalAmtOwed = 0;
 
 QString emailSignedIn;
@@ -136,9 +136,34 @@ void firstLoad(vector<Client> loadClients, QString selected){
 
 //Go through local database and update the total amount owed
 void updateTotalAmtOwed(){
+   // qDebug() << "Update total amt";
     double total = 0;
     for(int i = 0; i < dbClients.size(); i++){
-        total += dbClients[i].getAmtOwed();
+        double totalThisClientOwes = 0;
+        double totalThisClientPaid = 0;
+        //the amount owed value may not be correct, re calculate it and store it
+        //go through all of the logs for this client
+        //qDebug() << "Client: " << dbClients[i].getName();
+        for(int log = 0; log < dbClients[i].getLogs().size(); log++){
+            //pull out the current log
+            Entry * cur = dbClients[i].getLog(log);
+            //QString msg =  cur->getDate() + " $" + QString::number(cur->getAmount());
+            //add the amount of this lesson to the total this client owes
+            totalThisClientOwes += cur->getAmount();
+            //if the status of this log is NOT SENT and NOT UNPAID  (meaning it is a date)
+            //then add to what this person paid
+            if (cur->getStatus() != "SENT" && cur->getStatus() != "UNPAID"){
+                 totalThisClientPaid += cur->getAmount();
+                // msg += "   PAID";
+            }
+           // qDebug() << msg;
+        }
+       // qDebug() << "Total Owed: " << totalThisClientOwes << "  Total Paid: " << totalThisClientPaid << " Diff:" << totalThisClientOwes - totalThisClientPaid;
+        //after calculating all of that update this entry
+        dbClients[i].setAmtOwed( totalThisClientOwes - totalThisClientPaid);
+        total += totalThisClientOwes - totalThisClientPaid;
+       // qDebug() << "Overall Total Owed: " << total;
+       // qDebug();qDebug();
     }
     ui2->lblTotalAmtOwed->setText(("Total Owed: $" + QString::number(total)));
 
@@ -170,7 +195,7 @@ void showLogs(){
             ui2->tblLogs->setItem(i,3, new QTableWidgetItem(QString::number(c.getAmount())));
             ui2->tblLogs->setItem(i,4, new QTableWidgetItem(c.getStatus()));
             ui2->tblLogs->setItem(i,5, new QTableWidgetItem(c.getNote()));
-            if (c.getStatus() != "PAID"){
+            if (c.getStatus() == "SENT" || c.getStatus() == "UNPAID"){
                 amtOwed += c.getAmount();
             }
         }
@@ -191,7 +216,8 @@ void showLogs(){
 double updateAmtOwed(vector<Entry> logs, FirebaseHandler * db){
     double total=0;
     for(auto it = logs.begin(); it != logs.end(); it++){
-        if (it->getStatus() != "PAID"){
+        //if it hasn't been paid add it to total
+        if (it->getStatus() == "SENT" || it->getStatus() == "UNPAID"){
          total += it->getAmount();
         }
     }
@@ -373,8 +399,10 @@ void MainWindow::on_tblLogs_cellClicked(int row, int column)
         if (cell->text() == "UNPAID"){
             cell->setText("SENT");
         } else if (cell->text() == "SENT"){
-            cell->setText("PAID");
-        } else if (cell->text() == "PAID"){
+            QDateTime date = QDateTime::currentDateTime();
+            QString formattedTime = date.toString("MM-dd-yyyy");
+            cell->setText(formattedTime);
+        } else {
             cell->setText("UNPAID");
         }
         //this gets saved because it counts as a changed cell
@@ -488,8 +516,29 @@ void MainWindow::on_actionDelete_Client_triggered()
 void MainWindow::on_btnAddLog_clicked()
 {
     if (selectedClient != nullptr){
-        double length = ui->edtLength->toPlainText().toDouble();
-        double amt = ui->edtAmount->toPlainText().toDouble();
+        QString lengthStr= ui->edtLength->toPlainText();
+        double length = 0;
+        double amt = 0;
+        if (lengthStr.contains(":") ){
+                QStringList splitData = lengthStr.split(":");
+                int hour = splitData[0].toInt();
+                int mins = splitData[1].toInt();
+                length = (hour) + (mins / 60.0);
+                //the length should round to 2 decimal places
+                //the amount to round to 2 decimal places
+                int length100 = (int)(length * 100.0);
+                length = length100 / 100.0;
+
+                amt = length * ui->edtRate->toPlainText().toDouble();
+                //round up to the next dollar
+                amt += 0.5;
+                amt = (int) amt;
+
+        } else {
+            length = lengthStr.toDouble();
+            amt = ui->edtAmount->toPlainText().toDouble();
+        }
+
         QString date = ui->edtDate->toPlainText();
         QString time = ui->edtTime->toPlainText();
 
@@ -623,7 +672,6 @@ void MainWindow::handleRightClick(const QPoint& pos)
 
 }
 
-
 void onComplete_deleteEntry(Entry * e, int clickedRow){
     //the entry is already deleted from firebase and the local dbClients in firebase manager
     //get rid of the log here in the table and also the local data
@@ -634,8 +682,10 @@ void onComplete_deleteEntry(Entry * e, int clickedRow){
             break;
         }
     }
+    showLogs();
+    qDebug() << "Deleted log at row " << clickedRow;
     //update the visual
-    ui2->tblLogs->removeRow(clickedRow);
+   // ui2->tblLogs->removeRow(clickedRow);
 }
 
 void MainWindow::on_actionDelete_triggered()
@@ -666,9 +716,8 @@ void MainWindow::on_actionDelete_triggered()
         db->deleteEntry(selectedClient->getLog(index.row()), onComplete_deleteEntry,index.row() );
     }
 
-
+    updateTotalAmtOwed();
 }
-
 
 void MainWindow::on_actionMakeInvoice_triggered()
 {
@@ -699,8 +748,6 @@ void MainWindow::on_actionMakeInvoice_triggered()
     emit sendToInvoiceDlg(selectedClient,invoiceEntries);
 
 }
-
-
 void MainWindow::on_actionSendToPhone_triggered()
 {
 
@@ -756,19 +803,43 @@ void MainWindow::on_actionMarkAsSent_triggered()
 }
 
 
-
-
 void MainWindow::on_actionMarkAsPaid_triggered()
 {
-    markAs("PAID", db);
-    showLogs();
+
+    bool ok;
+    QDateTime date = QDateTime::currentDateTime();
+    QString formattedTime = date.toString("MM-dd-yyyy");
+
+   QString text = QInputDialog::getText(this, tr("Payment Received"),
+                                        tr("Date"), QLineEdit::Normal,
+                                        formattedTime, &ok);
+   if (ok && !text.isEmpty()){
+       markAs(text, db);
+       showLogs();
+   }
+
+
 }
 
 
 void MainWindow::on_edtLength_textChanged()
 {
-    double length = ui->edtLength->toPlainText().toDouble();
-    double rate = ui->edtRate->toPlainText().toDouble();
-    ui->edtAmount->setPlainText( QString::number( roundUp(length * rate) ) );
+//if the length has an h or m in it that means minutes so do the conversion
+    QString lengthStr = ui->edtLength->toPlainText();
+    double length = 0;
+    /*if (lengthStr.contains(":") ){
+        QStringList splitData = lengthStr.split(":");
+        int hour = splitData[0].toInt();
+        int mins = splitData[1].toInt();
+        length = (hour) + (mins / 60.0);
+    } else {
+        length = lengthStr.toDouble();
+    }*/
+       if (!lengthStr.contains(":") ){
+           length = lengthStr.toDouble();
+           double rate = ui->edtRate->toPlainText().toDouble();
+           ui->edtAmount->setPlainText( QString::number( roundUp(length * rate) ) );
+       }
+
 }
 
