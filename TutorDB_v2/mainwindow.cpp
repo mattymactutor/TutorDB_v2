@@ -107,31 +107,6 @@ void filter(QString q){
     }
 }
 
-void firstLoad(vector<Client> loadClients, QString selected){
-    dbClients = loadClients;
-
-    //sort the clients in alphabetical order
-    sort(dbClients.begin(),dbClients.end(), Client::sortByName);
-    displayClients.clear();
-    for (unsigned int i = 0; i < dbClients.size() ; i++ ) {
-        displayClients.push_back(&dbClients[i]);
-        totalAmtOwed += dbClients[i].getAmtOwed();
-    }
-    showClientList();
-    //if new client highlight them
-    if (idxSelClient == -2){
-        for (unsigned int i = 0; i < displayClients.size() ; i++ ) {
-            if (displayClients[i]->getUID() == selected){
-                ui2->lstClients->setCurrentRow(i);
-                idxSelClient = i;
-                selectedClient = displayClients[i];
-                break;
-            }
-        }
-    }
-    ui2->lblTotalAmtOwed->setText(("Total Owed: $" + QString::number(totalAmtOwed)));
-
-   }
 
 
 //Go through local database and update the total amount owed
@@ -168,6 +143,33 @@ void updateTotalAmtOwed(){
     ui2->lblTotalAmtOwed->setText(("Total Owed: $" + QString::number(total)));
 
 }
+
+void firstLoad(vector<Client> loadClients, QString selected){
+    dbClients = loadClients;
+
+    //sort the clients in alphabetical order
+    sort(dbClients.begin(),dbClients.end(), Client::sortByName);
+    displayClients.clear();
+    for (unsigned int i = 0; i < dbClients.size() ; i++ ) {
+        displayClients.push_back(&dbClients[i]);
+    }
+    showClientList();
+    //if new client highlight them
+    if (idxSelClient == -2){
+        for (unsigned int i = 0; i < displayClients.size() ; i++ ) {
+            if (displayClients[i]->getUID() == selected){
+                ui2->lstClients->setCurrentRow(i);
+                idxSelClient = i;
+                selectedClient = displayClients[i];
+                break;
+            }
+        }
+    }
+    updateTotalAmtOwed();
+   // ui2->lblTotalAmtOwed->setText(("Total Owed: $" + QString::number(totalAmtOwed)));
+
+   }
+
 
 void showLogs(){
     loadedClient = false;
