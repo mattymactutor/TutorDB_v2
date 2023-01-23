@@ -42,13 +42,11 @@ private slots:
     void on_actionDelete_triggered();
     void on_actionMakeInvoice_triggered();
     void on_actionSendToPhone_triggered();
-
-
     void on_actionMarkAsSent_triggered();
-
     void on_actionMarkAsPaid_triggered();
-
     void on_edtLength_textChanged();
+
+    void on_edtRate_textChanged();
 
 private:
     Ui::MainWindow *ui;

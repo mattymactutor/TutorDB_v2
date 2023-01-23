@@ -100,8 +100,10 @@ void updateClient(Client * c){
 
 void filter(QString q){
     displayClients.clear();
+    q = q.toLower();
     for(unsigned int i = 0; i < dbClients.size(); i++){
-        if (dbClients[i].getName().contains(q) || (q == "*" && dbClients[i].getAmtOwed() > 0)){
+        QString name = dbClients[i].getName().toLower();
+        if (name.contains(q) || (q == "*" && dbClients[i].getAmtOwed() > 0)){
             displayClients.push_back(&dbClients[i]);
         }
     }
@@ -113,13 +115,13 @@ void filter(QString q){
 void updateTotalAmtOwed(){
    // qDebug() << "Update total amt";
     double total = 0;
-    for(int i = 0; i < dbClients.size(); i++){
+    for(size_t i = 0; i < dbClients.size(); i++){
         double totalThisClientOwes = 0;
         double totalThisClientPaid = 0;
         //the amount owed value may not be correct, re calculate it and store it
         //go through all of the logs for this client
         //qDebug() << "Client: " << dbClients[i].getName();
-        for(int log = 0; log < dbClients[i].getLogs().size(); log++){
+        for(size_t log = 0; log < dbClients[i].getLogs().size(); log++){
             //pull out the current log
             Entry * cur = dbClients[i].getLog(log);
             //QString msg =  cur->getDate() + " $" + QString::number(cur->getAmount());
@@ -142,6 +144,9 @@ void updateTotalAmtOwed(){
     }
     ui2->lblTotalAmtOwed->setText(("Total Owed: $" + QString::number(total)));
 
+    //the display clients need to be repopulated because the *** could have gone away if someone paid
+    filter( ui2->srchClient->toPlainText());
+
 }
 
 void firstLoad(vector<Client> loadClients, QString selected){
@@ -153,7 +158,7 @@ void firstLoad(vector<Client> loadClients, QString selected){
     for (unsigned int i = 0; i < dbClients.size() ; i++ ) {
         displayClients.push_back(&dbClients[i]);
     }
-    showClientList();
+
     //if new client highlight them
     if (idxSelClient == -2){
         for (unsigned int i = 0; i < displayClients.size() ; i++ ) {
@@ -167,7 +172,7 @@ void firstLoad(vector<Client> loadClients, QString selected){
     }
     updateTotalAmtOwed();
    // ui2->lblTotalAmtOwed->setText(("Total Owed: $" + QString::number(totalAmtOwed)));
-
+    showClientList();
    }
 
 
@@ -515,48 +520,7 @@ void MainWindow::on_actionDelete_Client_triggered()
 }
 
 
-void MainWindow::on_btnAddLog_clicked()
-{
-    if (selectedClient != nullptr){
-        QString lengthStr= ui->edtLength->toPlainText();
-        double length = 0;
-        double amt = 0;
-        if (lengthStr.contains(":") ){
-                QStringList splitData = lengthStr.split(":");
-                int hour = splitData[0].toInt();
-                int mins = splitData[1].toInt();
-                length = (hour) + (mins / 60.0);
-                //the length should round to 2 decimal places
-                //the amount to round to 2 decimal places
-                int length100 = (int)(length * 100.0);
-                length = length100 / 100.0;
 
-                amt = length * ui->edtRate->toPlainText().toDouble();
-                //round up to the next dollar
-                amt += 0.5;
-                amt = (int) amt;
-
-        } else {
-            length = lengthStr.toDouble();
-            amt = ui->edtAmount->toPlainText().toDouble();
-        }
-
-        QString date = ui->edtDate->toPlainText();
-        QString time = ui->edtTime->toPlainText();
-
-        db->addEntry(selectedClient->getUID(),length,amt,date,time,"", [this](Entry e){
-            selectedClient->addLog(e);
-            //show the new log that was just added
-            showLogs();
-            //update the information on firebase
-            QVariantMap updateData;
-            updateData[Client::KEY_AMT_OWED] = selectedClient->getAmtOwed();
-            db->updateClientAttribute(e.getCID(), updateData);
-            //calc the new amt owed
-            updateTotalAmtOwed();
-        });
-    }
-}
 
 bool MainWindow::isEventInside(QTextEdit * edit, QWheelEvent * event){
 
@@ -843,5 +807,79 @@ void MainWindow::on_edtLength_textChanged()
            ui->edtAmount->setPlainText( QString::number( roundUp(length * rate) ) );
        }
 
+}
+
+
+void MainWindow::on_btnAddLog_clicked()
+{
+    if (selectedClient != nullptr){
+        QString lengthStr= ui->edtLength->toPlainText();
+        double length = 0;
+        double amt = 0;
+        //if the length is an odd time convert it to decimal
+        //ex: 1 hour 40 mins is 1:40
+        if (lengthStr.contains(":") ){
+                QStringList splitData = lengthStr.split(":");
+                int hour = splitData[0].toInt();
+                int mins = splitData[1].toInt();
+                length = (hour) + (mins / 60.0);
+                //the length should round to 2 decimal places
+                //the amount to round to 2 decimal places
+                int length100 = (int)(length * 100.0);
+                length = length100 / 100.0;
+
+        } else {
+            length = lengthStr.toDouble();
+        }
+
+        //calc based on the rate in the text box and not the client because it could be different
+        amt = length * ui->edtRate->toPlainText().toDouble();
+        //round up to the next dollar
+        amt += 0.5;
+        amt = (int) amt;
+
+
+        QString date = ui->edtDate->toPlainText();
+        QString time = ui->edtTime->toPlainText();
+
+        db->addEntry(selectedClient->getUID(),length,amt,date,time,"", [this](Entry e){
+            selectedClient->addLog(e);
+            //show the new log that was just added
+            showLogs();
+            //update the information on firebase
+            QVariantMap updateData;
+            updateData[Client::KEY_AMT_OWED] = selectedClient->getAmtOwed();
+            db->updateClientAttribute(e.getCID(), updateData);
+            //calc the new amt owed
+            updateTotalAmtOwed();
+        });
+    }
+}
+
+
+
+
+
+
+void MainWindow::on_edtRate_textChanged()
+{
+    QString rateStr = ui->edtRate->toPlainText();
+    if (rateStr.length() == 0){
+        return;
+    }
+    bool ok;
+    double rate = rateStr.toDouble(&ok);
+    if (ok){
+        //look at the current length and update the amount
+        double amt = rate * ui->edtLength->toPlainText().toDouble();
+        ui->edtAmount->setText(QString::number(amt));
+    } else {
+        QMessageBox msgBox;
+        msgBox.setText("Error");
+        msgBox.setInformativeText("Rate must be numeric");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.setDefaultButton(QMessageBox::Ok);
+        int ret = msgBox.exec();
+    }
 }
 
